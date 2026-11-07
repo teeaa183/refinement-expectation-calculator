@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>精煉期望值計算機</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root {
+  --bg: #eef2f8;
+  --surface: #ffffff;
+  --ink: #12263f;
+  --muted: #55667d;
+  --line: #cdd7e6;
+  --accent: #5b4bc4;
+  --accent-ink: #ffffff;
+  --wash: #e6e2fa;
+  --risk: #b83a54;
+  --hero-bg: #12365c;
+  --hero-ink: #ffffff;
+  --hero-muted: #b4c4db;
+  --hero-line: #2d5384;
+  --font-display: "Chakra Petch", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c223e;
+    --surface: #133257;
+    --ink: #eaf0fa;
+    --muted: #9db0ca;
+    --line: #2d4f7c;
+    --accent: #8b7cf0;
+    --accent-ink: #0c223e;
+    --wash: #264070;
+    --risk: #f4a0a8;
+    --hero-bg: #1c4474;
+    --hero-line: #3a6498;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c223e;
+  --surface: #133257;
+  --ink: #eaf0fa;
+  --muted: #9db0ca;
+  --line: #2d4f7c;
+  --accent: #8b7cf0;
+  --accent-ink: #0c223e;
+  --wash: #264070;
+  --risk: #f4a0a8;
+  --hero-bg: #1c4474;
+  --hero-line: #3a6498;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  padding-block: 28px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 940px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+header { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { margin: 0; font-size: 13px; letter-spacing: 0.04em; color: var(--muted); }
+h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 2.1rem); line-height: 1.25; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+@media (max-width: 760px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+legend, .label { padding: 0; font-weight: 700; font-size: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.hint { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips.grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.chip { position: relative; display: block; }
+.chip input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.chip span { display: block; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font-weight: 500; text-align: center; transition: background 0.12s, border-color 0.12s; }
+.chips.grid .chip span { padding-inline: 0; font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+.chip input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip:hover input:not(:checked) + span { border-color: var(--accent); }
+
+input[type="number"], select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+input[type="number"] { font-family: var(--font-display); font-weight: 500; font-variant-numeric: tabular-nums; }
+input[type="number"]:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.result { background: var(--hero-bg); color: var(--hero-ink); border-radius: 10px; padding: 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.result .kicker { margin: 0; color: var(--hero-muted); font-size: 14px; }
+.big { margin: 2px 0 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.9rem, 8.5vw, 3rem); line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sub { margin: 6px 0 0; color: var(--hero-muted); }
+.sub b { color: var(--hero-ink); font-weight: 700; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 14px; padding-top: 16px; border-top: 1px solid var(--hero-line); margin: 0; }
+.stat { min-width: 0; }
+.stat dt { font-size: 12.5px; color: var(--hero-muted); }
+.stat dd { margin: 2px 0 0; font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.rule { margin: 0; font-size: 13px; color: var(--hero-muted); }
+
+.table-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.table-card h2 { margin: 0; font-size: 1.05rem; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; min-width: 420px; }
+th, td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { background: var(--accent); color: var(--accent-ink); border-bottom: 0; font-weight: 700; }
+td { font-family: var(--font-display); font-weight: 500; }
+td:first-child { font-weight: 700; }
+.p-low { color: var(--risk); }
+tr.beyond td { color: var(--muted); }
+tr.beyond td.p-low { color: var(--risk); opacity: 0.75; }
+tr.is-target td { background: var(--wash); font-weight: 700; }
+.note { margin: 0; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">精煉材料：強化武器金屬-級數一、級數二、神之金屬、鋁</p>
+    <h1>精煉期望值計算機</h1>
+    <p class="lede">輸入裝備價格與目標精煉值，依機率表算出期望最終價格。</p>
+  </header>
+
+  <form class="layout" id="form" onsubmit="return false">
+    <section class="panel" aria-label="輸入">
+      <fieldset>
+        <legend>裝備種類</legend>
+        <div class="chips">
+          <label class="chip"><input type="radio" name="type" value="w1"><span>一級武器</span></label>
+          <label class="chip"><input type="radio" name="type" value="w2"><span>二級武器</span></label>
+          <label class="chip"><input type="radio" name="type" value="w3"><span>三級武器</span></label>
+          <label class="chip"><input type="radio" name="type" value="w4" checked><span>四級武器</span></label>
+          <label class="chip"><input type="radio" name="type" value="armor"><span>防具</span></label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="price">裝備價格</label>
+        <input id="price" type="number" inputmode="numeric" min="0" step="1" value="100000">
+        <p class="hint">預設為範例數字，請改成實際價格。</p>
+      </div>
+
+      <fieldset>
+        <legend>目標精煉值</legend>
+        <div class="chips grid" id="targets"></div>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="mat">每次精煉的材料費（選填）</label>
+        <input id="mat" type="number" inputmode="numeric" min="0" step="1" value="0">
+        <p class="hint">每按一次精煉就付一次，失敗的那次也算。</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="mode">精煉失敗時</label>
+        <select id="mode">
+          <option value="break" selected>裝備損毀，重新買一件從 +0 開始</option>
+          <option value="drop">精煉值 -1，裝備保留</option>
+          <option value="stay">精煉值不變，裝備保留</option>
+        </select>
+        <p class="hint">機率表沒有寫失敗後果，請選你的遊戲實際的規則。</p>
+      </div>
+    </section>
+
+    <section class="result" aria-live="polite">
+      <div>
+        <p class="kicker" id="kicker">期望最終價格</p>
+        <p class="big" id="total">—</p>
+        <p class="sub" id="sub"></p>
+      </div>
+      <dl class="stats" id="stats"></dl>
+      <p class="rule" id="rule"></p>
+    </section>
+  </form>
+
+  <section class="table-card">
+    <h2 id="table-title">各精煉值的期望成本</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>精煉</th><th>成功率</th><th>期望成本</th><th>原價倍數</th><th id="th-items">平均件數</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="note">期望成本是從 +0 一路精煉到該等級，平均要花的總錢數（含買裝備）。實際運氣好壞會差很多，這是長期平均。</p>
+  </section>
+</div>
+
+<script>
+/*CALC-START*/
+const PROBS = {
+  w1:    [1, 1, 1, 1, 1, 1, 1, 0.6, 0.4, 0.19],
+  w2:    [1, 1, 1, 1, 1, 1, 0.6, 0.4, 0.2, 0.19],
+  w3:    [1, 1, 1, 1, 1, 0.6, 0.5, 0.2, 0.2, 0.19],
+  w4:    [1, 1, 1, 1, 0.6, 0.4, 0.4, 0.2, 0.2, 0.09],
+  armor: [1, 1, 1, 1, 0.6, 0.4, 0.4, 0.2, 0.2, 0.09]
+};
+
+function calc(probs, price, mat, mode) {
+  const rows = [];
+  if (mode === 'break') {
+    let prod = 1, A = 0;
+    for (let k = 1; k <= probs.length; k++) {
+      A += prod;
+      prod *= probs[k - 1];
+      rows.push({ k, p: probs[k - 1], cost: (price + mat * A) / prod, items: 1 / prod, attempts: A / prod, success: prod });
+    }
+  } else {
+    const D = [], T = [];
+    let cost = price, att = 0;
+    for (let s = 0; s < probs.length; s++) {
+      const q = probs[s];
+      const back = (mode === 'drop' && s > 0) ? (1 - q) : 0;
+      D[s] = (mat + back * (s > 0 ? D[s - 1] : 0)) / q;
+      T[s] = (1 + back * (s > 0 ? T[s - 1] : 0)) / q;
+      cost += D[s]; att += T[s];
+      rows.push({ k: s + 1, p: q, cost, items: 1, attempts: att, success: null });
+    }
+  }
+  return rows;
+}
+/*CALC-END*/
+
+const $ = (id) => document.getElementById(id);
+const nf = (n, d = 0) => n.toLocaleString('zh-TW', { maximumFractionDigits: d });
+const smart = (n) => nf(n, n >= 100 ? 0 : 1);
+const trim = (x) => nf(parseFloat(x.toFixed(2)), 2);
+function compact(n) {
+  if (n >= 1e8) return '約 ' + trim(n / 1e8) + ' 億';
+  if (n >= 1e4) return '約 ' + trim(n / 1e4) + ' 萬';
+  return '';
+}
+const pct = (p) => parseFloat((p * 100).toFixed(1)) + '%';
+
+const RULES = {
+  break: '失敗時裝備損毀，要重新買一件再從 +0 開始。期望成本 = (裝備價格 + 材料費 × 每件平均精煉次數) ÷ 一件裝備全部成功的機率。',
+  drop: '失敗時精煉值 -1，裝備保留。期望成本 = 裝備價格 + 每一級升級的期望材料費加總，退級後要重新爬回來。',
+  stay: '失敗時精煉值不變，裝備保留。期望成本 = 裝備價格 + 每一級的材料費 ÷ 該級成功率，加總到目標。'
+};
+
+(function () {
+  const box = $('targets');
+  for (let k = 1; k <= 10; k++) {
+    const l = document.createElement('label');
+    l.className = 'chip';
+    l.innerHTML = '<input type="radio" name="target" value="' + k + '"' + (k === 7 ? ' checked' : '') + '><span>+' + k + '</span>';
+    box.appendChild(l);
+  }
+})();
+
+function render() {
+  const type = document.querySelector('input[name="type"]:checked').value;
+  const target = +document.querySelector('input[name="target"]:checked').value;
+  const mode = $('mode').value;
+  const price = parseFloat($('price').value);
+  const mat = Math.max(0, parseFloat($('mat').value) || 0);
+  const typeName = document.querySelector('input[name="type"]:checked').nextElementSibling.textContent;
+
+  $('rule').textContent = RULES[mode];
+  $('kicker').textContent = typeName + ' 精煉到 +' + target + ' 的期望最終價格';
+  $('table-title').textContent = typeName + '：各精煉值的期望成本';
+
+  if (!isFinite(price) || price < 0) {
+    $('total').textContent = '—';
+    $('sub').textContent = '請輸入裝備價格。';
+    $('stats').innerHTML = '';
+    $('rows').innerHTML = '';
+    return;
+  }
+
+  const rows = calc(PROBS[type], price, mat, mode);
+  const r = rows[target - 1];
+
+  $('total').textContent = nf(r.cost);
+  const c = compact(r.cost);
+  const mult = price > 0 ? '是原價的 <b>' + smart(r.cost / price) + '</b> 倍' : '';
+  const items = mode === 'break' ? '平均要買 <b>' + smart(r.items) + '</b> 件裝備' : '';
+  $('sub').innerHTML = [c, mult, items].filter(Boolean).join('，');
+
+  let stats = '';
+  if (mode === 'break') {
+    stats += '<div class="stat"><dt>一件到位的機率</dt><dd>' + (r.success >= 0.01 ? pct(r.success) : parseFloat((r.success * 100).toPrecision(2)) + '%') + '</dd></div>';
+  }
+  stats += '<div class="stat"><dt>平均精煉次數</dt><dd>' + smart(r.attempts) + '</dd></div>';
+  $('stats').innerHTML = stats;
+
+  $('rows').innerHTML = rows.map((x) => {
+    const cls = x.k === target ? 'is-target' : (x.k > target ? 'beyond' : '');
+    const low = x.p < 1 ? ' class="p-low"' : '';
+    const m = price > 0 ? '×' + smart(x.cost / price) : '—';
+    const it = mode === 'break' ? '<td>' + smart(x.items) + '</td>' : '';
+    return '<tr class="' + cls + '"><td>+' + x.k + '</td><td' + low + '>' + pct(x.p) + '</td><td>' + nf(x.cost) + '</td><td>' + m + '</td>' + it + '</tr>';
+  }).join('');
+  $('th-items').hidden = mode !== 'break';
+}
+
+$('form').addEventListener('input', render);
+$('form').addEventListener('change', render);
+render();
+</script>
+</body>
+</html>
